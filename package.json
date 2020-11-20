@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "upload": "zip -r function.zip . > /dev/null && aws lambda update-function-code --function-name extractCaptions --zip-file fileb://function.zip && rm function.zip",
-    "test": "aws s3 cp s3://john2143.lambdatest/test.vtt test.txt && cat test.txt"
+    "testdl": "aws s3 cp s3://john2143.lambdatest/testbig.vtt test.txt && cat test.txt && rm test.txt",
+    "test": "aws lambda invoke --function-name extractCaptions invocation.txt --payload '{\"outs\": [\"vtt\"], \"in\": \"ASR_Short.mxf\", \"out\": \"testbig.vtt\" }' && cat invocation.txt && rm invocation.txt"
   },
   "keywords": [
     "lambda",
