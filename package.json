@@ -4,7 +4,8 @@
   "description": "ccextractor as lambda service",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "upload": "zip -r function.zip . > /dev/null && aws lambda update-function-code --function-name extractCaptions --zip-file fileb://function.zip && rm function.zip",
+    "test": "aws s3 cp s3://john2143.lambdatest/test.vtt test.txt && cat test.txt"
   },
   "keywords": [
     "lambda",

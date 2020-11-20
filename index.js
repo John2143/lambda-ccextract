@@ -14,6 +14,7 @@ async function getStream(filename){
 
 let shres = [];
 
+//ergonomic shell wrapper
 async function shell(name, ...args){
     return await shelladv(name, args, null);
 }
@@ -22,6 +23,7 @@ function finishBufs(bufs){
     return Buffer.concat(bufs);
 }
 
+//scuffed shell wrappers
 async function shelladv(name, args, stdintext, stdofunc){
     let p = cp.spawn(name, args);
 
@@ -41,9 +43,9 @@ async function shelladv(name, args, stdintext, stdofunc){
             console.log("some thing done MB", totalwritten / 1024 / 1024);
         });
     }
-    
+
     let ebufs = [];
-    
+
     p.stderr.on("data", d => ebufs.push(d));
 
     return await new Promise(resolve => {
@@ -52,7 +54,7 @@ async function shelladv(name, args, stdintext, stdofunc){
             shres.push({code, ebufs});
             resolve(ebufs)
         });
-        
+
         p.on("exit", code => {
             ebufs = finishBufs(ebufs);
             shres.push({code, ebufs});
@@ -62,34 +64,37 @@ async function shelladv(name, args, stdintext, stdofunc){
 }
 
 exports.handler = async (event) => {
+    //Assume that ccex-static exists in the source bucket, and that its
+    //staticly linked (see docker gizmotronic/ccextractor for build)
     let executable = await getStream("ccex-static");
     executable.pipe(fs.createWriteStream("/tmp/cx"));
     await new Promise(resolve => executable.on("end", resolve))
-
     await shell("chmod", "+x", "/tmp/cx");
 
     let ccargs = [
         "-bi", "-stdin", //stream from stdin
-        "--buffersize", "1M",
+        "--buffersize", "1M", //smaller buffer seems to work better
         "--stream", "10", //put in stream mode: wont end on file end
-        "-out=webvtt",
+        "-out=webvtt", //hardcode vtt for now, change to loop over input someday
         "-debug",
         "--no_progress_bar",
         "-stdout",
     ];
 
-    //avoid ETXTBSY
+    //avoid ETXTBSY on executable from chmod not finishing
     await new Promise(resolve => setTimeout(resolve, 50));
 
     let videoStream = (await getStream(event.in));
     await shelladv("/tmp/cx", ccargs, videoStream, stdout => {
         return new Promise((resolve, reject) => {
             console.log("starting upload");
+            //when stdout ends, the upload should end too.
+            //use this to detect when to end the program
             s3.upload({
-                Bucket, Key: "test.vtt", Body: stdout,
-            }, (_err, data) => {
-                console.log("upload done", _err);
-                if(_err){
+                Bucket, Key: event.out, Body: stdout,
+            }, (err, data) => {
+                console.log("upload done", err);
+                if(err){
                     reject();
                 }else{
                     resolve();
@@ -100,7 +105,7 @@ exports.handler = async (event) => {
 
     return {
         statusCode: 200,
-        data: "yep, downloaded!",
+        //show stderr of all shell commands as result
         shres: shres.map(x => {
             x.ebufs = x.ebufs.toString("utf-8");
             return x
