@@ -1,0 +1,16 @@
+{
+  "name": "lambda-ccextract",
+  "version": "1.0.0",
+  "description": "ccextractor as lambda service",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "lambda",
+    "ccextractor",
+    "aws"
+  ],
+  "author": "John2143",
+  "license": "MIT"
+}
